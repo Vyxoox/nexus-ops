@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+{% import 'macros.html' as ui with context %}
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Muitas Requisições — Nexus People &amp; Ops</title>
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.svg') }}" type="image/svg+xml">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/flash.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/form-errors.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <style>
+        .limit-card {
+            max-width: 520px; width: 100%; background: #ffffff; padding: 40px;
+            border-radius: 16px; border: 1px solid #e2e8f0;
+            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08); text-align: center;
+        }
+        .icon-box { font-size: 56px; margin-bottom: 16px; }
+        .alert-box {
+            background: #fffbeb; border: 1px solid #fde68a; color: #b45309;
+            padding: 12px 16px; border-radius: 8px; font-size: 14px; margin: 20px 0 24px;
+        }
+    </style>
+</head>
+<body>
+{{ ui.app_header('Proteção contra Abuso e Rate Limiting') }}
+
+<div class="main">
+    <div class="limit-card">
+        {{ ui.flash_messages() }}
+        <div class="icon-box">🛡️</div>
+        <h1>Acesso Limitado Temporariamente</h1>
+        <p style="color:#475569; font-size:14.5px; line-height:1.6;">
+            Identificamos um fluxo incomum de requisições vindo da sua origem. Para preservar a segurança e a estabilidade da plataforma, o acesso foi temporariamente limitado.
+        </p>
+
+        <div class="alert-box">
+            <strong>Erro 429:</strong> Muitas requisições. Aguarde 1 minuto e tente novamente.
+        </div>
+
+        <a class="btn btn-primary" href="{{ url_for('auth.login') }}">Voltar à Tela de Login</a>
+    </div>
+</div>
+
+{{ ui.app_footer() }}
+<script src="{{ url_for('static', filename='js/flash.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+{% import 'macros.html' as ui with context %}
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Busca de Colaboradores — Nexus People &amp; Ops</title>
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.svg') }}" type="image/svg+xml">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/flash.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/form-errors.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <style>
+        .search-section { background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 24px; }
+        .search-form { display: flex; gap: 10px; margin-bottom: 18px; }
+        .search-form input[type=text] { flex-grow: 1; padding: 12px 14px; font-size: 15px; border: 1px solid #cbd5e1; border-radius: 8px; }
+        .btn-search { padding: 11px 24px; font-size: 15px; background: #1e40af; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .btn-search:hover { background: #1d4ed8; }
+        .btn-secondary { background: #475569; color: white; border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 600; text-decoration: none; cursor: pointer; display: inline-block; }
+        .btn-secondary:hover { background: #334155; }
+
+        .filter-section { border-top: 1px solid #e2e8f0; padding-top: 16px; }
+        .filter-title { font-weight: 700; margin-bottom: 12px; color: #334155; display: flex; align-items: center; gap: 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; }
+        .checkbox-group { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+        .checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; color: #334155; }
+        .checkbox-item input { cursor: pointer; width: 15px; height: 15px; }
+
+        .resultados-container { margin-top: 24px; }
+        .resultado-card { background: #fff; border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px; margin-bottom: 14px; transition: transform 0.15s, box-shadow 0.15s; }
+        .resultado-card:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(15,23,42,0.06); }
+        .resultado-header { border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+        .nome-funcionario { font-size: 1.15rem; font-weight: 700; color: #0f172a; }
+        .nome-funcionario a { color: inherit; text-decoration: none; }
+        .nome-funcionario a:hover { color: #1e40af; text-decoration: underline; }
+
+        .info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+        .info-item { font-size: 0.9rem; line-height: 1.4; }
+        .info-label { font-weight: 700; color: #64748b; display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        .info-value { color: #1e293b; }
+
+        .no-results { text-align: center; padding: 36px; color: #64748b; }
+        .paginacao { margin-top: 20px; display: flex; gap: 10px; justify-content: center; align-items: center; }
+        .paginacao .pagina-info { font-size: 0.9rem; color: #475569; }
+    </style>
+</head>
+
+<body>
+{{ ui.app_header('Busca Avançada de Colaboradores', back_url=url_for('painel'), back_label='← Painel de Gestão') }}
+{{ ui.flash_messages() }}
+
+<div class="container">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px;">
+        <h1>🔍 Busca Corporativa Full-Text</h1>
+
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <a href="{{ url_for('busca.index', q=query, vinculo='todos') }}"
+               class="btn-secondary"
+               style="background: {{ '#1e40af' if (vinculo_selecionado == 'todos' or not vinculo_selecionado) else '#64748b' }};">Todos</a>
+            <a href="{{ url_for('busca.index', q=query, vinculo='efetivo') }}"
+               class="btn-secondary"
+               style="background: {{ '#1e40af' if vinculo_selecionado == 'efetivo' else '#64748b' }};">Efetivos</a>
+            <a href="{{ url_for('busca.index', q=query, vinculo='terceirizado') }}"
+               class="btn-secondary"
+               style="background: {{ '#0f766e' if vinculo_selecionado == 'terceirizado' else '#64748b' }};">Terceirizados</a>
+
+            {% if current_user.is_authenticated %}
+                <form method="post" action="{{ url_for('auth.logout') }}" style="display:inline; margin-left:8px;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn-secondary" style="background:#dc2626;">Sair</button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="search-section">
+        <form method="get" action="{{ url_for('busca.index') }}">
+            <input type="hidden" name="vinculo" value="{{ vinculo_selecionado or 'todos' }}">
+            <div class="search-form">
+                <input type="text" name="q" placeholder="Digite nome, cargo, unidade, departamento, empresa ou CPF..." value="{{ query }}">
+                <button type="submit" class="btn-search">Buscar</button>
+            </div>
+        </form>
+
+        <form method="post" action="{{ url_for('columns.set_cols_prefs') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="q" value="{{ query }}">
+            <input type="hidden" name="vinculo" value="{{ vinculo_selecionado or 'todos' }}">
+
+            <div class="filter-section">
+                <div class="filter-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                    </svg>
+                    Colunas visíveis nos resultados e na exportação Excel:
+                </div>
+
+                <div class="checkbox-group">
+                    {% set campos = [
+                        ('matricula', 'MATRÍCULA'),
+                        ('cpf', 'CPF'),
+                        ('rg', 'RG'),
+                        ('cin', 'CIN'),
+                        ('titulo_eleitor', 'TÍTULO DE ELEITOR'),
+                        ('pis_pasep', 'PIS/PASEP'),
+                        ('data_nasc', 'DATA DE NASCIMENTO'),
+                        ('endereco_residencial', 'ENDEREÇO RESIDENCIAL'),
+                        ('telefone_pessoal', 'TELEFONE PESSOAL'),
+                        ('email_pessoal', 'EMAIL PESSOAL'),
+                        ('email_corporativo', 'EMAIL CORPORATIVO'),
+                        ('ramal', 'RAMAL'),
+                        ('tipo', 'TIPO'),
+                        ('subtipo_vinculo', 'SUBTIPO VÍNCULO'),
+                        ('forma_ingresso', 'FORMA DE INGRESSO'),
+                        ('registro_interno', 'REGISTRO INTERNO'),
+                        ('cargo_atual', 'CARGO ATUAL'),
+                        ('cargo_anterior', 'CARGO ANTERIOR'),
+                        ('unidade', 'UNIDADE'),
+                        ('departamento', 'DEPARTAMENTO'),
+                        ('diretoria', 'DIRETORIA'),
+                        ('data_integracao', 'DATA DE INTEGRAÇÃO'),
+                        ('data_inicio', 'DATA DE INÍCIO'),
+                        ('data_admissao', 'DATA DE ADMISSÃO'),
+                        ('situacao', 'SITUAÇÃO'),
+                        ('data_desligamento', 'DATA DE DESLIGAMENTO'),
+                        ('documento_vinculo', 'DOCUMENTO DE VÍNCULO'),
+                        ('empresa_contratada', 'EMPRESA CONTRATADA'),
+                        ('numero_contrato', 'NÚMERO DO CONTRATO'),
+                        ('gestor_contrato', 'GESTOR DO CONTRATO'),
+                        ('lider_tecnico', 'LÍDER TÉCNICO'),
+                        ('analista_contratos', 'ANALISTA DE CONTRATOS'),
+                        ('representante_fornecedor', 'REPRESENTANTE DO FORNECEDOR')
+                    ] %}
+
+                    {% for valor, label in campos %}
+                    <label class="checkbox-item">
+                        <input type="checkbox" name="cols" value="{{ valor }}" {% if (not busca_realizada) or valor in colunas_selecionadas %}checked{% endif %}>
+                        {{ label }}
+                    </label>
+                    {% endfor %}
+                </div>
+
+                <div style="margin-top: 14px; display: flex; gap: 8px;">
+                    <button type="button" onclick="marcarTodos(true)" class="btn-secondary">Marcar Todos</button>
+                    <button type="button" onclick="marcarTodos(false)" class="btn-secondary">Desmarcar Todos</button>
+                    <button type="submit" class="btn-secondary" style="background:#0f172a;">Aplicar Colunas</button>
+                </div>
+
+                <div style="margin-top: 8px; font-size: 0.78rem; color: #64748b;">
+                    * Nome completo e vínculo são exibidos em todas as visualizações.
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        function marcarTodos(status) {
+            document.querySelectorAll('input[name="cols"]').forEach(cb => cb.checked = status);
+        }
+    </script>
+
+    {% if busca_realizada %}
+        <div class="resultados-container">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap:wrap; margin-bottom:14px;">
+                <h2 style="margin: 0;">
+                    {% if query %}Resultados para "{{ query }}"{% else %}Todos os Colaboradores{% endif %} ({{ total_resultados }})
+                </h2>
+                <a href="{{ url_for('planilha.exportar_xlsx', q=query, vinculo=vinculo_selecionado) }}" class="btn btn-accent">Exportar Relatório Excel</a>
+            </div>
+
+            {% if resultados %}
+                {% for r in resultados %}
+                    <div class="resultado-card">
+                        <div class="resultado-header">
+                            <div class="nome-funcionario">
+                                <a href="{{ url_for('verfunc.ver_funcionario', funcionario_id=r.id) }}" target="_blank">
+                                    {{ r.nome_completo }}
+                                </a>
+                            </div>
+
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                {% if current_user.is_authenticated and current_user.is_admin and r.id %}
+                                    <a href="{{ url_for('editfunc.editar_funcionario', id=r.id) }}" title="Editar" class="acao-link acao-editar">✏️ Editar</a>
+                                {% endif %}
+                                <div class="badge-vinculo {{ 'badge-efetivo' if r.vinculo == 'EFETIVO' else 'badge-terceirizado' }}">
+                                    {{ r.vinculo }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="info-grid">
+                            {% for valor, label in campos %}
+                                {% if ((not busca_realizada and not colunas_selecionadas) or valor in colunas_selecionadas) and r[valor] %}
+                                    <div class="info-item">
+                                        <span class="info-label">{{ label }}</span>
+                                        <span class="info-value">
+                                            {% if valor == 'cpf' %}
+                                                {{ r[valor] | formato_cpf }}
+                                            {% elif valor == 'rg' %}
+                                                {{ r[valor] | formato_rg }}
+                                            {% elif r[valor] is string %}
+                                                {{ r[valor] }}
+                                            {% elif r[valor].strftime %}
+                                                {{ r[valor].strftime('%d/%m/%Y') }}
+                                            {% else %}
+                                                {{ r[valor] }}
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-results">
+                    <p>Nenhum colaborador encontrado para o termo buscado.</p>
+                </div>
+            {% endif %}
+
+            {% if total_pages > 1 %}
+                <div class="paginacao">
+                    {% if page > 1 %}
+                        <a href="{{ url_for('busca.index', q=query, vinculo=vinculo_selecionado, page=page-1) }}" class="btn-secondary">Anterior</a>
+                    {% endif %}
+                    <span class="pagina-info">Página {{ page }} de {{ total_pages }}</span>
+                    {% if page < total_pages %}
+                        <a href="{{ url_for('busca.index', q=query, vinculo=vinculo_selecionado, page=page+1) }}" class="btn-secondary">Próxima</a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+
+{{ ui.app_footer() }}
+<script src="{{ url_for('static', filename='js/flash.js') }}"></script>
+</body>
+</html>

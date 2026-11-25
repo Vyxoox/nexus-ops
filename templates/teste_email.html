@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+{% import 'macros.html' as ui with context %}
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste SMTP — Nexus People &amp; Ops</title>
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.svg') }}" type="image/svg+xml">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/flash.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/form-errors.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <style>
+        .smtp-card { max-width: 640px; margin: 0 auto; background: #fff; padding: 32px; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 8px 20px rgba(15,23,42,.06); }
+        label { display: block; font-weight: 700; font-size: 13px; color: #334155; margin-top: 14px; }
+        input[type=email] { width: 100%; padding: 11px 12px; margin-top: 6px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; }
+    </style>
+</head>
+<body>
+{{ ui.app_header('Diagnóstico de Notificações SMTP', back_url=url_for('usuarios.listar_admin'), back_label='← Administradores') }}
+{{ ui.flash_messages() }}
+
+<div class="main-content">
+    <div class="smtp-card">
+        <h1 style="margin-bottom:8px;">Teste de Conectividade SMTP</h1>
+        <p style="color:#64748b; font-size:14px; margin-bottom:20px;">Dispare um e-mail de validação para confirmar a integração com o gateway de alertas.</p>
+
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label>E-mail de destino</label>
+            <input type="email" name="destinatario" required placeholder="gestor@nexuscorp.com.br">
+            <button type="submit" class="btn btn-primary" style="margin-top:16px;">Enviar Disparo de Teste</button>
+        </form>
+    </div>
+</div>
+
+{{ ui.app_footer() }}
+<script src="{{ url_for('static', filename='js/flash.js') }}"></script>
+</body>
+</html>

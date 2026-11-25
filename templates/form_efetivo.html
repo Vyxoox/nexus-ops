@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+{% import 'macros.html' as ui with context %}
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Novo Colaborador Efetivo — Nexus People &amp; Ops</title>
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.svg') }}" type="image/svg+xml">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/flash.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/form-errors.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <style>
+        label { display: block; margin-top: 10px; font-weight: 600; font-size: 13px; color: #334155; }
+        input[type=text], input[type=date], input[type=email], select {
+            width: 100%; padding: 10px 12px; margin-top: 5px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px;
+        }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px 20px; }
+        .full-width { grid-column: 1 / -1; }
+        .cancelar { margin-left: 12px; color: #b91c1c; text-decoration: none; font-weight: 600; font-size: 14px; }
+        .foto-section {
+            display: flex; justify-content: space-between; align-items: center; gap: 32px;
+            margin: 16px 0 20px; padding: 20px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;
+        }
+        .foto-upload { flex: 1; display: flex; flex-direction: column; }
+        .foto-upload input[type="file"] { display: none; }
+        .custom-file-upload {
+            display: inline-flex; align-items: center; justify-content: center; padding: 12px 20px;
+            background: #f1f5f9; border: 2px dashed #cbd5e1; border-radius: 8px; cursor: pointer;
+            font-weight: 600; color: #334155; margin-bottom: 8px; font-size: 14px;
+        }
+        .custom-file-upload:hover { background: #e2e8f0; }
+        .foto-preview-box { width: 170px; text-align: center; flex-shrink: 0; }
+        .foto-preview-box img { width: 145px; height: 145px; object-fit: cover; border: 2px solid #cbd5e1; border-radius: 12px; }
+        @media (max-width: 768px) {
+            .form-grid { grid-template-columns: 1fr; }
+            .foto-section { flex-direction: column; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+{{ ui.app_header('Cadastro de Colaborador Efetivo', back_url=url_for('painel'), back_label='← Painel de Gestão') }}
+{{ ui.flash_messages() }}
+
+<div class="container container-narrow">
+    <h1>Novo Colaborador Efetivo</h1>
+    <form method="post" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="vinculo" value="EFETIVO">
+
+        <h2>Identificação</h2>
+        <div class="form-grid">
+            <div class="full-width">
+                <label>NOME COMPLETO*</label>
+                <input placeholder="Ex.: Mariana Ferreira Costa" name="nome_completo" required type="text"
+                       class="{% if errors and 'nome_completo' in errors %}input-error{% endif %}">
+                {{ ui.field_error('nome_completo', errors) }}
+            </div>
+
+            <div class="full-width">
+                <div class="foto-section">
+                    <div class="foto-upload">
+                        <label>Foto Corporativa</label>
+                        <label for="foto" class="custom-file-upload">📁 Selecionar Foto</label>
+                        <input type="file" name="foto" id="foto" accept="image/*" onchange="previewFoto(event)">
+                        <small id="nome-arquivo-selecionado">Nenhum arquivo selecionado. Selecione uma imagem JPG ou PNG.</small>
+                    </div>
+                    <div class="foto-preview-box">
+                        <label>Pré-visualização</label>
+                        <img id="preview-foto" src="{{ url_for('static', filename='img/sem_foto.jpg') }}" alt="Pré-visualização">
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <label>CPF*</label>
+                <input placeholder="123.456.789-01" type="text" name="cpf" id="cpf" required oninput="mascaraCPF(this)" class="{% if errors and 'cpf' in errors %}input-error{% endif %}">
+                {{ ui.field_error('cpf', errors) }}
+            </div>
+
+            <div>
+                <label>RG</label>
+                <input placeholder="12.345.678-9" type="text" name="rg" id="rg" oninput="mascaraRG(this)" class="{% if errors and 'rg' in errors %}input-error{% endif %}">
+                {{ ui.field_error('rg', errors) }}
+            </div>
+
+            <div>
+                <label>CIN</label>
+                <input placeholder="123.456.789-01" type="text" name="cin" class="{% if errors and 'cin' in errors %}input-error{% endif %}">
+                {{ ui.field_error('cin', errors) }}
+            </div>
+
+            <div>
+                <label>TÍTULO DE ELEITOR</label>
+                <input placeholder="1234 5678 9012" type="text" name="titulo_eleitor" class="{% if errors and 'titulo_eleitor' in errors %}input-error{% endif %}">
+                {{ ui.field_error('titulo_eleitor', errors) }}
+            </div>
+
+            <div>
+                <label>PIS/PASEP*</label>
+                <input placeholder="123.45678.90-1" type="text" name="pis_pasep" required class="{% if errors and 'pis_pasep' in errors %}input-error{% endif %}">
+                {{ ui.field_error('pis_pasep', errors) }}
+            </div>
+
+            <div>
+                <label>MATRÍCULA*</label>
+                <input placeholder="NX-2026-001" type="text" name="matricula" required class="{% if errors and 'matricula' in errors %}input-error{% endif %}">
+                {{ ui.field_error('matricula', errors) }}
+            </div>
+
+            <div>
+                <label>DATA DE NASCIMENTO</label>
+                <input type="date" name="data_nasc" class="{% if errors and 'data_nasc' in errors %}input-error{% endif %}">
+                {{ ui.field_error('data_nasc', errors) }}
+            </div>
+        </div>
+
+        <h2>Contato</h2>
+        <div class="form-grid">
+            <div class="full-width">
+                <label>ENDEREÇO RESIDENCIAL*</label>
+                <input placeholder="Av. Paulista, 1000 — Bela Vista, São Paulo/SP" type="text" name="endereco_residencial" required class="{% if errors and 'endereco_residencial' in errors %}input-error{% endif %}">
+                {{ ui.field_error('endereco_residencial', errors) }}
+            </div>
+
+            <div>
+                <label>TELEFONE PESSOAL</label>
+                <input placeholder="(11) 99123-4567" type="text" name="telefone_pessoal" class="{% if errors and 'telefone_pessoal' in errors %}input-error{% endif %}">
+                {{ ui.field_error('telefone_pessoal', errors) }}
+            </div>
+
+            <div>
+                <label>EMAIL PESSOAL</label>
+                <input placeholder="mariana.costa@email.com" type="email" name="email_pessoal" class="{% if errors and 'email_pessoal' in errors %}input-error{% endif %}">
+                {{ ui.field_error('email_pessoal', errors) }}
+            </div>
+
+            <div>
+                <label>EMAIL CORPORATIVO*</label>
+                <input placeholder="mariana.costa@nexuscorp.com.br" type="email" name="email_corporativo" class="{% if errors and 'email_corporativo' in errors %}input-error{% endif %}">
+                {{ ui.field_error('email_corporativo', errors) }}
+                <small style="color:#64748b;">Caso não informado, será aplicado o e-mail corporativo padrão.</small>
+            </div>
+
+            <div>
+                <label>RAMAL*</label>
+                <input type="text" name="ramal" placeholder="Ex.: 4120" required class="{% if errors and 'ramal' in errors %}input-error{% endif %}">
+                {{ ui.field_error('ramal', errors) }}
+            </div>
+        </div>
+
+        <h2>Dados Corporativos</h2>
+        <div class="form-grid">
+            <div>
+                <label>TIPO*</label>
+                <select name="tipo" required class="{% if errors and 'tipo' in errors %}input-error{% endif %}">
+                    <option value="">Selecione</option>
+                    {% for opcao in opcoes_tipo %}
+                    <option value="{{ opcao }}">{{ opcao }}</option>
+                    {% endfor %}
+                </select>
+                {{ ui.field_error('tipo', errors) }}
+            </div>
+
+            <div>
+                <label>SUBTIPO DE VÍNCULO*</label>
+                <select name="subtipo_vinculo" required class="{% if errors and 'subtipo_vinculo' in errors %}input-error{% endif %}">
+                    <option value="">Selecione</option>
+                    {% for opcao in opcoes_subtipo_vinculo %}
+                    <option value="{{ opcao }}">{{ opcao }}</option>
+                    {% endfor %}
+                </select>
+                {{ ui.field_error('subtipo_vinculo', errors) }}
+            </div>
+
+            <div>
+                <label>FORMA DE INGRESSO*</label>
+                <select name="forma_ingresso" required class="{% if errors and 'forma_ingresso' in errors %}input-error{% endif %}">
+                    <option value="">Selecione</option>
+                    {% for opcao in opcoes_forma_ingresso %}
+                    <option value="{{ opcao }}">{{ opcao }}</option>
+                    {% endfor %}
+                </select>
+                {{ ui.field_error('forma_ingresso', errors) }}
+            </div>
+
+            <div>
+                <label>REGISTRO INTERNO</label>
+                <input placeholder="Ex.: REG-00482" type="text" name="registro_interno" class="{% if errors and 'registro_interno' in errors %}input-error{% endif %}">
+                {{ ui.field_error('registro_interno', errors) }}
+            </div>
+
+            <div>
+                <label>CARGO ATUAL</label>
+                <input placeholder="Engenheiro(a) de Software Sênior" type="text" name="cargo_atual" class="{% if errors and 'cargo_atual' in errors %}input-error{% endif %}">
+                {{ ui.field_error('cargo_atual', errors) }}
+            </div>
+
+            <div>
+                <label>CARGO ANTERIOR</label>
+                <input placeholder="Engenheiro(a) de Software Pleno" type="text" name="cargo_anterior" class="{% if errors and 'cargo_anterior' in errors %}input-error{% endif %}">
+                {{ ui.field_error('cargo_anterior', errors) }}
+            </div>
+
+            <div>
+                <label>UNIDADE*</label>
+                <select name="unidade" required class="{% if errors and 'unidade' in errors %}input-error{% endif %}">
+                    <option value="">Selecione</option>
+                    {% for opcao in opcoes_unidade %}
+                    <option value="{{ opcao }}">{{ opcao }}</option>
+                    {% endfor %}
+                </select>
+                {{ ui.field_error('unidade', errors) }}
+            </div>
+
+            <div>
+                <label>DEPARTAMENTO*</label>
+                <select name="departamento" required class="{% if errors and 'departamento' in errors %}input-error{% endif %}">
+                    <option value="">Selecione</option>
+                    {% for opcao in opcoes_departamento %}
+                    <option value="{{ opcao }}">{{ opcao }}</option>
+                    {% endfor %}
+                </select>
+                {{ ui.field_error('departamento', errors) }}
+            </div>
+
+            <div>
+                <label>DIRETORIA*</label>
+                <select name="diretoria" required class="{% if errors and 'diretoria' in errors %}input-error{% endif %}">
+                    <option value="">Selecione</option>
+                    {% for opcao in opcoes_diretoria %}
+                    <option value="{{ opcao }}">{{ opcao }}</option>
+                    {% endfor %}
+                </select>
+                {{ ui.field_error('diretoria', errors) }}
+            </div>
+
+            <div>
+                <label>DOCUMENTO DE VÍNCULO</label>
+                <input placeholder="Termo Admissional CLT #2026-08" type="text" name="documento_vinculo" class="{% if errors and 'documento_vinculo' in errors %}input-error{% endif %}">
+                {{ ui.field_error('documento_vinculo', errors) }}
+            </div>
+        </div>
+
+        <h2>Datas e Situação</h2>
+        <div class="form-grid">
+            <div>
+                <label>DATA DE INTEGRAÇÃO</label>
+                <input type="date" name="data_integracao" class="{% if errors and 'data_integracao' in errors %}input-error{% endif %}">
+                {{ ui.field_error('data_integracao', errors) }}
+            </div>
+
+            <div>
+                <label>DATA DE INÍCIO</label>
+                <input type="date" name="data_inicio" class="{% if errors and 'data_inicio' in errors %}input-error{% endif %}">
+                {{ ui.field_error('data_inicio', errors) }}
+            </div>
+
+            <div>
+                <label>DATA DE ADMISSÃO</label>
+                <input type="date" name="data_admissao" class="{% if errors and 'data_admissao' in errors %}input-error{% endif %}">
+                {{ ui.field_error('data_admissao', errors) }}
+            </div>
+
+            <div>
+                <label>SITUAÇÃO*</label>
+                <select name="situacao" id="situacao" required class="{% if errors and 'situacao' in errors %}input-error{% endif %}" onchange="toggleDataDesligamento()">
+                    <option value="">Selecione</option>
+                    {% for opcao in opcoes_situacao %}
+                    <option value="{{ opcao }}">{{ opcao }}</option>
+                    {% endfor %}
+                </select>
+                {{ ui.field_error('situacao', errors) }}
+            </div>
+
+            <div>
+                <label>DATA DE DESLIGAMENTO</label>
+                <input type="date" id="data_desligamento" name="data_desligamento" class="{% if errors and 'data_desligamento' in errors %}input-error{% endif %}">
+                {{ ui.field_error('data_desligamento', errors) }}
+            </div>
+        </div>
+
+        <div style="margin-top:24px;">
+            <button type="submit" class="btn btn-primary">Salvar Colaborador</button>
+            <a href="{{ url_for('painel') }}" class="cancelar">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+{{ ui.app_footer() }}
+
+<script>
+    function toggleDataDesligamento() {
+        const situacao = (document.getElementById('situacao')?.value || '').toUpperCase();
+        const dataDesligamento = document.getElementById('data_desligamento');
+        if (dataDesligamento) {
+            dataDesligamento.required = Boolean(situacao && situacao !== 'ATIVO');
+        }
+    }
+    function mascaraCPF(i) {
+        let v = i.value.replace(/\D/g, "").substring(0, 11);
+        if (v.length > 9) v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+        else if (v.length > 6) v = v.replace(/(\d{3})(\d{3})(\d{3})/, "$1.$2.$3");
+        else if (v.length > 3) v = v.replace(/(\d{3})(\d{3})/, "$1.$2");
+        i.value = v;
+    }
+    function mascaraRG(i) {
+        let v = i.value.replace(/\D/g, "").substring(0, 9);
+        if (v.length > 8) v = v.replace(/(\d{2})(\d{3})(\d{3})(\d{1})/, "$1.$2.$3-$4");
+        else if (v.length > 5) v = v.replace(/(\d{2})(\d{3})(\d{3})/, "$1.$2.$3");
+        else if (v.length > 2) v = v.replace(/(\d{2})(\d{3})/, "$1.$2");
+        i.value = v;
+    }
+    function previewFoto(event) {
+        const input = event.target;
+        const preview = document.getElementById('preview-foto');
+        const legenda = document.getElementById('nome-arquivo-selecionado');
+        if (input.files && input.files[0]) {
+            const arquivo = input.files[0];
+            legenda.innerHTML = `✓ Selecionado: <strong>${arquivo.name}</strong>`;
+            legenda.style.color = "#15803d";
+            const reader = new FileReader();
+            reader.onload = e => { preview.src = e.target.result; };
+            reader.readAsDataURL(arquivo);
+        }
+    }
+    document.addEventListener("DOMContentLoaded", function() {
+        document.querySelectorAll("form").forEach(form => {
+            form.addEventListener("submit", function() {
+                const submitBtn = this.querySelector("button[type='submit']");
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = "Salvando...";
+                    submitBtn.style.opacity = "0.7";
+                }
+            });
+        });
+    });
+</script>
+<script src="{{ url_for('static', filename='js/flash.js') }}"></script>
+</body>
+</html>

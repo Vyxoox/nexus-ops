@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+{% import 'macros.html' as ui with context %}
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Detalhe do Log #{{ log.id }} — Nexus People &amp; Ops</title>
+  <link rel="icon" href="{{ url_for('static', filename='img/favicon.svg') }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/flash.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/form-errors.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+  <style>
+    .top { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+    .subtitle { margin: 6px 0 0; color: #64748b; font-size: 14px; }
+    .top-actions { display: flex; gap: 8px; align-items: flex-start; }
+    .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin-bottom: 18px; }
+    .card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; background: #f8fafc; }
+    .label { color: #64748b; font-size: 11px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .04em; font-weight: 700; }
+    .value { font-size: 14px; word-break: break-word; color: #0f172a; }
+    .badge-alerta { color: #b45309; background: #fef3c7; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .badge-falha { color: #b91c1c; background: #fee2e2; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .badge-operacao { color: #1e293b; background: #e2e8f0; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .status-pill { display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .status-sucesso { color: #15803d; background: #dcfce7; }
+    .status-falha { color: #b91c1c; background: #fee2e2; }
+    .status-outro { color: #374151; background: #e5e7eb; }
+    .resumo-box { border: 1px solid #e2e8f0; border-radius: 10px; background: #f8fafc; padding: 12px 14px; color: #1e293b; font-size: 14px; }
+    details.raw { margin-top: 12px; border: 1px solid #e2e8f0; border-radius: 10px; background: #0f172a; color: #e2e8f0; overflow: hidden; }
+    details.raw > summary { padding: 10px 14px; cursor: pointer; background: #1e293b; font-weight: 700; font-size: 13px; }
+    pre { margin: 0; padding: 12px; overflow: auto; white-space: pre-wrap; word-break: break-word; font-size: 12px; }
+    .inline-pre { margin: 0; padding: 0; background: transparent; color: inherit; font-size: 12px; }
+  </style>
+</head>
+<body>
+{{ ui.app_header('Detalhamento de Auditoria', back_url=retorno, back_label='← Lista de Logs') }}
+{{ ui.flash_messages() }}
+
+<div class="container container-narrow">
+  <div class="top">
+    <div>
+      <h1>Detalhe do Evento #{{ log.id }}</h1>
+      <p class="subtitle">Visão completa do registro de auditoria para análise e rastreabilidade.</p>
+    </div>
+    <div class="top-actions">
+      <a class="btn btn-index" href="{{ retorno }}">Voltar para lista</a>
+      <a class="btn btn-primary" href="{{ url_for('painel') }}">Painel</a>
+    </div>
+  </div>
+
+  <div class="meta-grid">
+    <div class="card">
+      <div class="label">Tipo de evento</div>
+      <div class="value">
+        {% set evento = tipo_evento(log) %}
+        {% if evento == 'alerta' %}
+          <span class="badge-alerta">Alerta</span>
+        {% elif evento == 'falha' %}
+          <span class="badge-falha">Falha</span>
+        {% else %}
+          <span class="badge-operacao">Operação</span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="card"><div class="label">Data/Hora</div><div class="value">{{ formatar_datahora_local(log.criado_em) }}</div></div>
+    <div class="card"><div class="label">Usuário</div><div class="value">{{ log.usuario_login or '-' }}</div></div>
+    <div class="card"><div class="label">Ação</div><div class="value">{{ formatar_acao(log.acao) }}<br><small style="color:#64748b;">{{ log.acao or '-' }}</small></div></div>
+    <div class="card">
+      <div class="label">Status</div>
+      <div class="value">
+        <span class="status-pill {{ 'status-sucesso' if log.status == 'sucesso' else ('status-falha' if log.status == 'falha' else 'status-outro') }}">
+          {{ log.status or '-' }}
+        </span>
+      </div>
+    </div>
+    <div class="card"><div class="label">Categoria</div><div class="value">{{ log.categoria or '-' }}</div></div>
+    <div class="card"><div class="label">Recurso</div><div class="value">{{ log.recurso or '-' }}{% if log.recurso_id %} #{{ log.recurso_id }}{% endif %}</div></div>
+    <div class="card"><div class="label">Método HTTP</div><div class="value">{{ log.metodo_http or '-' }}</div></div>
+    <div class="card"><div class="label">Rota</div><div class="value">{{ log.rota or '-' }}</div></div>
+    <div class="card"><div class="label">IP</div><div class="value">{{ log.ip_origem or '-' }}</div></div>
+    <div class="card"><div class="label">User Agent</div><div class="value">{{ log.user_agent or '-' }}</div></div>
+
+    {% if ip_alvo %}
+    <div class="card">
+        <div class="label">Status atual do IP</div>
+        <div class="value">
+            <strong>{{ ip_alvo }}</strong><br>
+            <span class="status-pill {{ 'status-falha' if bloqueio_ativo else 'status-sucesso' }}">
+                {{ 'Bloqueado' if bloqueio_ativo else 'Desbloqueado' }}
+            </span>
+        </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <h2>Resumo interpretado</h2>
+  <div class="resumo-box">{{ formatar_detalhes(log.detalhes) }}</div>
+
+  {% if alteracoes_struct %}
+    <h2>Alterações Detectadas</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Campo</th>
+            <th>Antes</th>
+            <th>Depois</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in alteracoes_struct %}
+          <tr>
+            <td><strong>{{ item.campo }}</strong></td>
+            <td>{% if '\n' in item.antes %}<pre class="inline-pre">{{ item.antes }}</pre>{% else %}{{ item.antes }}{% endif %}</td>
+            <td>{% if '\n' in item.depois %}<pre class="inline-pre">{{ item.depois }}</pre>{% else %}{{ item.depois }}{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+
+  <h2>Campos registrados</h2>
+  {% if detalhes_linhas %}
+  <div class="table-wrapper">
+    <table>
+      <tbody>
+        {% for campo, valor in detalhes_linhas %}
+        <tr>
+          <th style="width:240px;">{{ campo }}</th>
+          <td>
+            {% if '\n' in valor %}
+            <pre class="inline-pre">{{ valor }}</pre>
+            {% else %}
+            {{ valor }}
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="border:1px dashed #cbd5e1; border-radius:10px; padding:12px; color:#64748b;">Este evento não possui detalhes estruturados em JSON.</div>
+  {% endif %}
+
+  <h2>Detalhes brutos</h2>
+  <details class="raw">
+    <summary>Mostrar JSON/Texto completo</summary>
+    <pre>{{ detalhes_pretty if detalhes_pretty else '-' }}</pre>
+  </details>
+
+  {% if ip_alvo and bloqueio_ativo %}
+  <form method="post" action="{{ url_for('auditoria.desbloquear_ip_login') }}" style="margin-top:20px; display:flex; gap:10px; flex-wrap:wrap;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="ip" value="{{ ip_alvo }}">
+      <input type="hidden" name="retorno" value="{{ retorno }}">
+      <input type="text" name="motivo" placeholder="Motivo do desbloqueio" required style="flex:1; min-width:240px; padding:10px; border:1px solid #cbd5e1; border-radius:8px;">
+      <button type="submit" class="btn btn-primary">Desbloquear IP</button>
+  </form>
+  {% endif %}
+</div>
+
+{{ ui.app_footer() }}
+<script src="{{ url_for('static', filename='js/flash.js') }}"></script>
+</body>
+</html>

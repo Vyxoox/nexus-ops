@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+{% import 'macros.html' as ui with context %}
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meu Painel de Gestão — Nexus People &amp; Ops</title>
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.svg') }}" type="image/svg+xml">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/flash.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/form-errors.css') }}">
+</head>
+<body>
+
+{{ ui.app_header('Painel Executivo de Gestão') }}
+{{ ui.flash_messages() }}
+
+<div class="container">
+    <div class="top-bar">
+        <div class="actions-left">
+            <a href="{{ url_for('busca.index') }}" class="btn btn-navy">🔍 Busca Avançada</a>
+
+            {% if current_user.is_admin %}
+                <a href="{{ url_for('criacao.novo_efetivo') }}" class="btn btn-efetivo">➕ Novo Efetivo</a>
+                <a href="{{ url_for('criacao.novo_terceirizado') }}" class="btn btn-terceirizado">➕ Novo Terceirizado</a>
+                <a href="{{ url_for('planilha.exportar_xlsx', q='', vinculo='todos') }}" class="btn btn-accent">📊 Exportar Excel</a>
+
+                <form action="{{ url_for('reindexar.reindexar') }}" method="post" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-index">🔄 Reindexar Busca</button>
+                </form>
+            {% endif %}
+
+            {% if current_user.is_superadmin %}
+                <a href="{{ url_for('usuarios.listar_admin') }}" class="btn btn-index">👥 Acessos &amp; Perfis</a>
+                <a href="{{ url_for('auditoria.logs_auditoria') }}" class="btn btn-index">🛡️ Auditoria &amp; Logs</a>
+                <a href="{{ url_for('observabilidade') }}" class="btn btn-index">📈 Observabilidade</a>
+            {% endif %}
+        </div>
+
+        <form action="{{ url_for('auth.logout') }}" method="post" style="display:inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-logout">Sair</button>
+        </form>
+    </div>
+
+    <div class="dash-hero">
+        <div>
+            <h1>Meu Painel de Gestão</h1>
+            <p class="dash-hero-sub">
+                Visão consolidada da força de trabalho, contratos terceirizados e governança operacional.
+            </p>
+        </div>
+        <div class="dash-scope-badge">
+            <span>Escopo ativo:</span>
+            <strong>{{ perfil_usuario or 'GESTÃO' }}</strong>
+            <span>&bull; {{ kpis.taxa_atividade }}% ativos</span>
+        </div>
+    </div>
+
+    {% if resumo_auditoria %}
+    <div class="gov-banner">
+        <div class="gov-metrics">
+            <span>Status da Plataforma:
+                <strong>{{ 'Online (DB + Índice OK)' if resumo_auditoria.sistema_online else 'Degradado' }}</strong>
+            </span>
+            <span>Eventos (24h): <strong>{{ resumo_auditoria.logs_24h }}</strong></span>
+            <span>Alertas de Segurança (24h): <strong>{{ resumo_auditoria.alertas_24h }}</strong></span>
+            <span>IPs Bloqueados: <strong>{{ resumo_auditoria.ips_bloqueados }}</strong></span>
+        </div>
+        <div style="display:flex; gap:8px;">
+            <a href="{{ url_for('auditoria.logs_auditoria') }}" class="acao-link acao-editar">Abrir Trilha de Auditoria</a>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- SEÇÃO 1: KPI CARDS EXECUTIVOS -->
+    <div class="kpi-grid-exec">
+        <div class="kpi-card kpi-navy">
+            <div class="kpi-label">Colaboradores Ativos</div>
+            <div class="kpi-value">{{ kpis.total_ativos }}</div>
+            <div class="kpi-meta">{{ kpis.total_registros }} registros totais na base</div>
+        </div>
+
+        <div class="kpi-card kpi-primary">
+            <div class="kpi-label">Quadro Efetivo (CLT)</div>
+            <div class="kpi-value">{{ kpis.efetivos_ativos }}</div>
+            <div class="kpi-meta">{{ kpis.pct_efetivos }}% da força ativa</div>
+        </div>
+
+        <div class="kpi-card kpi-teal">
+            <div class="kpi-label">Terceirizados &amp; Parceiros</div>
+            <div class="kpi-value">{{ kpis.terceirizados_ativos }}</div>
+            <div class="kpi-meta">{{ kpis.pct_terceirizados }}% da força ativa</div>
+        </div>
+
+        <div class="kpi-card kpi-amber">
+            <div class="kpi-label">Contratos Vigentes</div>
+            <div class="kpi-value">{{ kpis.total_contratos }}</div>
+            <div class="kpi-meta">Contratos de prestação ativos</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-label">Departamentos Ativos</div>
+            <div class="kpi-value">{{ kpis.total_departamentos }}</div>
+            <div class="kpi-meta">{{ kpis.integracoes_recentes }} integrações (90 dias)</div>
+        </div>
+
+        <div class="kpi-card kpi-muted">
+            <div class="kpi-label">Registros Inativos</div>
+            <div class="kpi-value">{{ kpis.total_inativos }}</div>
+            <div class="kpi-meta">Histórico preservado p/ auditoria</div>
+        </div>
+    </div>
+
+    <!-- SEÇÃO 2: INTELIGÊNCIA OPERACIONAL -->
+    <div class="analytics-grid">
+        <!-- Card 1: Distribuição por Diretoria -->
+        <div class="analytics-card">
+            <div class="analytics-card-head">
+                <h3>Distribuição por Diretoria</h3>
+                <span class="analytics-tag">Ativos</span>
+            </div>
+            {% if por_diretoria %}
+            <div class="bar-list">
+                {% for d in por_diretoria %}
+                <div>
+                    <div class="bar-row-top">
+                        <span class="bar-row-label" title="{{ d.raw }}">{{ d.codigo }} — {{ d.nome }}</span>
+                        <span class="bar-row-val">{{ d.total }} ({{ d.share }}%)</span>
+                    </div>
+                    <div class="bar-track" title="Efetivos: {{ d.efetivos }} | Terceirizados: {{ d.terceirizados }}">
+                        {% if d.total > 0 %}
+                            {% set w_ef = (d.efetivos / d.total) * d.pct %}
+                            {% set w_tc = (d.terceirizados / d.total) * d.pct %}
+                            <div class="bar-fill-primary" style="width: {{ w_ef }}%;"></div>
+                            <div class="bar-fill-teal" style="width: {{ w_tc }}%;"></div>
+                        {% endif %}
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 3px;">
+                        {{ d.efetivos }} efetivo(s) &bull; {{ d.terceirizados }} terceirizado(s)
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+                <p style="font-size:13px; color:var(--text-muted);">Sem colaboradores ativos no escopo atual.</p>
+            {% endif %}
+        </div>
+
+        <!-- Card 2: Composição & Top Departamentos -->
+        <div class="analytics-card">
+            <div class="analytics-card-head">
+                <h3>Composição &amp; Departamentos</h3>
+                <span class="analytics-tag">Headcount</span>
+            </div>
+            {% set circ = 251.2 %}
+            {% set ef_len = (kpis.pct_efetivos / 100.0) * circ %}
+            <div class="donut-wrap">
+                <svg width="96" height="96" viewBox="0 0 100 100" aria-label="Proporção de vínculos">
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="#e2e8f0" stroke-width="14"></circle>
+                    {% if kpis.total_ativos > 0 %}
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="#0ea5e9" stroke-width="14"
+                            stroke-dasharray="{{ circ }} {{ circ }}" transform="rotate(-90 50 50)"></circle>
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="#1e40af" stroke-width="14"
+                            stroke-dasharray="{{ ef_len }} {{ circ }}" transform="rotate(-90 50 50)"></circle>
+                    {% endif %}
+                    <text x="50" y="54" text-anchor="middle" font-size="16" font-weight="800" fill="#0f172a">{{ kpis.total_ativos }}</text>
+                </svg>
+                <div class="donut-legend">
+                    <div class="legend-item">
+                        <span class="legend-swatch" style="background:#1e40af;"></span>
+                        <span><strong>{{ kpis.efetivos_ativos }}</strong> Efetivos ({{ kpis.pct_efetivos }}%)</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-swatch" style="background:#0ea5e9;"></span>
+                        <span><strong>{{ kpis.terceirizados_ativos }}</strong> Terceirizados ({{ kpis.pct_terceirizados }}%)</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bar-list">
+                {% for dep in por_departamento %}
+                <div>
+                    <div class="bar-row-top">
+                        <span class="bar-row-label" title="{{ dep.nome }}">{{ dep.nome }}</span>
+                        <span class="bar-row-val">{{ dep.total }}</span>
+                    </div>
+                    <div class="bar-track">
+                        <div class="bar-fill-slate" style="width: {{ dep.pct }}%;"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Card 3: Fornecedores & Integrações Recentes -->
+        <div class="analytics-card">
+            <div class="analytics-card-head">
+                <h3>Parceiros &amp; Integrações</h3>
+                <span class="analytics-tag">Contratos</span>
+            </div>
+
+            {% if fornecedores_ativos %}
+            <div class="mini-list">
+                {% for forn in fornecedores_ativos %}
+                <div class="mini-list-item">
+                    <div>
+                        <div class="mini-list-title">{{ forn.empresa }}</div>
+                        <div class="mini-list-sub">{{ forn.contratos_count }} contrato(s) ativo(s)</div>
+                    </div>
+                    <span class="badge-vinculo badge-terceirizado">{{ forn.colaboradores_count }} aloc.</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div style="border-top:1px solid #f1f5f9; padding-top:10px;">
+                <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px;">
+                    Últimas Integrações
+                </div>
+                <div class="mini-list">
+                    {% for adm in ultimas_admissoes %}
+                    <div class="mini-list-item">
+                        <div>
+                            <a href="{{ url_for('verfunc.ver_funcionario', funcionario_id=adm.id) }}" class="mini-list-title">{{ adm.nome_completo }}</a>
+                            <div class="mini-list-sub">{{ adm.cargo_atual or adm.departamento or '-' }}</div>
+                        </div>
+                        <span class="badge-vinculo {{ 'badge-efetivo' if adm.vinculo == 'EFETIVO' else 'badge-terceirizado' }}">
+                            {{ adm.vinculo }}
+                        </span>
+                    </div>
+                    {% else %}
+                    <div style="font-size:13px; color:var(--text-muted);">Nenhum registro recente.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SEÇÃO 3: DIRETÓRIO INTERATIVO DE COLABORADORES -->
+    <div class="secao-card">
+        <div class="directory-toolbar">
+            <div>
+                <h2 style="margin:0;">Diretório de Colaboradores</h2>
+                <div class="contador" id="contador-tabela" style="margin:6px 0 0;">
+                    Exibindo {{ funcionarios | length }} registro(s)
+                </div>
+            </div>
+
+            <div class="tab-pills" role="tablist">
+                <button type="button" class="tab-pill active" data-tab="ativos" onclick="selecionarAba('ativos', this)">
+                    Ativos ({{ kpis.total_ativos }})
+                </button>
+                <button type="button" class="tab-pill" data-tab="efetivos" onclick="selecionarAba('efetivos', this)">
+                    Efetivos ({{ kpis.efetivos_ativos }})
+                </button>
+                <button type="button" class="tab-pill" data-tab="terceirizados" onclick="selecionarAba('terceirizados', this)">
+                    Terceirizados ({{ kpis.terceirizados_ativos }})
+                </button>
+                <button type="button" class="tab-pill" data-tab="inativos" onclick="selecionarAba('inativos', this)">
+                    Inativos ({{ kpis.total_inativos }})
+                </button>
+            </div>
+
+            <div class="filter-controls">
+                <input type="text" id="filtro-texto" class="filter-input"
+                       placeholder="Filtrar por nome, CPF, cargo ou empresa..."
+                       oninput="aplicarFiltrosTabela()">
+                <select id="filtro-diretoria" class="filter-select" onchange="aplicarFiltrosTabela()">
+                    <option value="">Todas as diretorias</option>
+                    {% for d in por_diretoria %}
+                    <option value="{{ d.raw | upper }}">{{ d.codigo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="table-wrapper">
+            <table id="tabela-colaboradores">
+                <thead>
+                    <tr>
+                        <th>Colaborador</th>
+                        <th>CPF</th>
+                        <th>Vínculo</th>
+                        <th>Cargo Atual</th>
+                        <th>Diretoria / Departamento</th>
+                        <th>Situação</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in funcionarios %}
+                    <tr class="colab-row"
+                        data-ativo="{{ '1' if f.ativo else '0' }}"
+                        data-vinculo="{{ (f.vinculo or '') | upper }}"
+                        data-diretoria="{{ (f.diretoria or '') | upper }}"
+                        data-busca="{{ (f.nome_completo ~ ' ' ~ f.cpf ~ ' ' ~ (f.cargo_atual or '') ~ ' ' ~ (f.departamento or '') ~ ' ' ~ (f.empresa_contratada or '') ~ ' ' ~ (f.matricula or '')) | lower }}">
+                        <td>
+                            <a href="{{ url_for('verfunc.ver_funcionario', funcionario_id=f.id) }}" class="colab-link">
+                                {{ f.nome_completo }}
+                            </a>
+                            {% if f.empresa_contratada %}
+                                <div style="font-size:11px; color:var(--text-muted);">{{ f.empresa_contratada }}</div>
+                            {% elif f.matricula %}
+                                <div style="font-size:11px; color:var(--text-muted);">Matrícula: {{ f.matricula }}</div>
+                            {% endif %}
+                        </td>
+                        <td>{{ f.cpf | formato_cpf }}</td>
+                        <td>
+                            <span class="badge-vinculo {{ 'badge-efetivo' if f.vinculo == 'EFETIVO' else 'badge-terceirizado' }}">
+                                {{ f.vinculo }}
+                            </span>
+                        </td>
+                        <td>{{ f.cargo_atual or '-' }}</td>
+                        <td>
+                            <div>{{ f.diretoria or '-' }}</div>
+                            {% if f.departamento %}
+                                <div style="font-size:11px; color:var(--text-muted);">{{ f.departamento }}</div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge-status {{ 'status-ativo' if f.ativo else 'status-inativo' }}">
+                                {{ f.situacao or ('Ativo' if f.ativo else 'Inativo') }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="acoes">
+                                <a class="acao-link acao-editar" href="{{ url_for('verfunc.ver_funcionario', funcionario_id=f.id) }}">👁️ Ficha</a>
+                                {% if current_user.is_admin %}
+                                    {% if f.ativo %}
+                                        <a class="acao-link acao-editar" href="{{ url_for('editfunc.editar_funcionario', id=f.id) }}">✏️ Editar</a>
+                                        <form action="{{ url_for('funcionarios.inativar_funcionario', id=f.id) }}"
+                                              method="post"
+                                              style="display:inline;"
+                                              onsubmit="return confirm('Tem certeza que deseja inativar este colaborador?')">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="acao-link acao-inativar" style="border:none; cursor:pointer;">Inativar</button>
+                                        </form>
+                                    {% else %}
+                                        <form action="{{ url_for('funcionarios.reativar_funcionario', id=f.id) }}"
+                                              method="post"
+                                              style="display:inline;"
+                                              onsubmit="return confirm('Reativar este colaborador?')">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="acao-link acao-reativar" style="border:none; cursor:pointer;">✅ Reativar</button>
+                                        </form>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr id="empty-row-server">
+                        <td colspan="7" style="text-align:center; color:var(--text-muted); padding:28px;">
+                            Nenhum colaborador cadastrado no escopo atual.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    <tr id="empty-row-filter" style="display:none;">
+                        <td colspan="7" style="text-align:center; color:var(--text-muted); padding:24px;">
+                            Nenhum colaborador corresponde aos filtros aplicados.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{{ ui.app_footer() }}
+
+<script>
+    let abaAtual = 'ativos';
+
+    function selecionarAba(aba, btn) {
+        abaAtual = aba;
+        document.querySelectorAll('.tab-pill').forEach(el => el.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        aplicarFiltrosTabela();
+    }
+
+    function aplicarFiltrosTabela() {
+        const termo = (document.getElementById('filtro-texto')?.value || '').trim().toLowerCase();
+        const dirFiltro = (document.getElementById('filtro-diretoria')?.value || '').trim().toUpperCase();
+        const linhas = document.querySelectorAll('#tabela-colaboradores tbody tr.colab-row');
+        let visiveis = 0;
+
+        linhas.forEach(tr => {
+            const ativo = tr.dataset.ativo === '1';
+            const vinculo = tr.dataset.vinculo || '';
+            const diretoria = tr.dataset.diretoria || '';
+            const busca = tr.dataset.busca || '';
+
+            let okAba = true;
+            if (abaAtual === 'ativos') okAba = ativo;
+            else if (abaAtual === 'efetivos') okAba = ativo && vinculo === 'EFETIVO';
+            else if (abaAtual === 'terceirizados') okAba = ativo && vinculo === 'TERCEIRIZADO';
+            else if (abaAtual === 'inativos') okAba = !ativo;
+
+            const okTexto = !termo || busca.includes(termo);
+            const okDir = !dirFiltro || diretoria.includes(dirFiltro);
+
+            if (okAba && okTexto && okDir) {
+                tr.style.display = '';
+                visiveis += 1;
+            } else {
+                tr.style.display = 'none';
+            }
+        });
+
+        const emptyFilter = document.getElementById('empty-row-filter');
+        if (emptyFilter) {
+            emptyFilter.style.display = (linhas.length > 0 && visiveis === 0) ? '' : 'none';
+        }
+
+        const contador = document.getElementById('contador-tabela');
+        if (contador) {
+            contador.textContent = `Exibindo ${visiveis} registro(s)`;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', aplicarFiltrosTabela);
+</script>
+<script src="{{ url_for('static', filename='js/flash.js') }}"></script>
+</body>
+</html>

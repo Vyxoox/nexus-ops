@@ -1,0 +1,37 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+.junie/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment and local IDE data
+.env
+.idea/
+.vscode/
+
+# Test/cache artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local runtime data & databases
+*.db
+*.sqlite
+*.sqlite3
+instance/
+indice_funcionarios/
+indice_colaboradores/
+logs/
+
+# Uploaded collaborator photos (keep directory placeholder only)
+static/fotos_funcionarios/*
+!static/fotos_funcionarios/.gitkeep
+
+# OS files
+.DS_Store
+Thumbs.db

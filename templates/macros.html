@@ -1,0 +1,62 @@
+{% macro flash_messages(compact=False) %}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div id="flash-container" class="{{ 'flash-container-compact' if compact else '' }}">
+                {% for category, message in messages %}
+                    {% set cat_class = 'success' if category == 'success' else
+                                      'error' if category == 'error' else
+                                      'warning' if category == 'warning' else
+                                      'info' %}
+                    <div class="flash {{ cat_class }} {{ 'flash-compact' if compact else '' }}" role="alert">
+                        <span class="flash-text">{{ message }}</span>
+                        <button type="button" class="flash-close" aria-label="Fechar">&times;</button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+{% endmacro %}
+
+{% macro field_error(field_name, errors_dict) %}
+    {% if errors_dict and field_name in errors_dict %}
+        <div class="error-message" role="alert">
+            <span class="error-icon">&#9888;</span>
+            {{ errors_dict[field_name] }}
+        </div>
+    {% endif %}
+{% endmacro %}
+
+{% macro app_header(subtitulo='Painel Executivo de Gestão', back_url=None, back_label='Voltar ao Painel', user=None) %}
+{% set _user = user if user is not none else (current_user if current_user is defined else none) %}
+{% set _autenticado = _user is not none and (_user.is_authenticated | default(false)) %}
+{% set _brand_href = back_url if back_url else (url_for('painel') if _autenticado else url_for('auth.login')) %}
+<header class="nx-header">
+    <div class="nx-header-inner">
+        <a href="{{ _brand_href }}" class="nx-brand-link" aria-label="Nexus People & Ops">
+            <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="Nexus People & Ops" class="nx-brand-logo">
+        </a>
+        <div class="nx-header-center">
+            <div class="nx-header-title">Nexus People &amp; Ops</div>
+            <div class="nx-header-subtitle">{{ subtitulo }}</div>
+        </div>
+        <div class="nx-header-right">
+            {% if back_url %}
+                <a href="{{ back_url }}" class="btn btn-outline-light">{{ back_label }}</a>
+            {% elif _autenticado %}
+                <div class="nx-user-pill">
+                    <span class="nx-user-dot"></span>
+                    <span class="nx-user-name">{{ _user.login }}</span>
+                    <span class="nx-user-role">{{ _user.perfil }}</span>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</header>
+{% endmacro %}
+
+{% macro app_footer() %}
+<footer class="nx-footer">
+    <p><strong>Nexus People &amp; Ops</strong> — Plataforma Corporativa de Gestão de Pessoas, Contratos &amp; Conformidade</p>
+    <p>Projeto de Portfólio &bull; Desenvolvido por <strong>Vittor Oliveira (@Vyxoox)</strong> &bull; Governança e Proteção LGPD</p>
+</footer>
+{% endmacro %}

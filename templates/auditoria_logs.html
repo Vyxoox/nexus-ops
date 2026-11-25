@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+{% import 'macros.html' as ui with context %}
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auditoria &amp; Logs — Nexus People &amp; Ops</title>
+  <link rel="icon" href="{{ url_for('static', filename='img/favicon.svg') }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/flash.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/form-errors.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+  <style>
+    .top { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+    .subtitle { margin: 6px 0 0; color: #64748b; max-width: 760px; font-size: 14px; }
+    .top-actions { display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; }
+    .kpi-grid { margin: 14px 0 18px; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+    .kpi { border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; background: #f8fafc; }
+    .kpi span { display: block; font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: .05em; font-weight: 700; }
+    .kpi strong { display: block; margin-top: 6px; font-size: 24px; color: #0f172a; }
+    .filtros { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 12px; }
+    .filtros input, .filtros select { width: 100%; padding: 9px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; }
+    .filtro-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .helper { margin: 6px 0 14px; color: #64748b; font-size: 12px; }
+    .badge-alerta { color: #b45309; background: #fef3c7; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .badge-falha { color: #b91c1c; background: #fee2e2; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .badge-operacao { color: #1e293b; background: #e2e8f0; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .status-pill { display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .status-sucesso { color: #15803d; background: #dcfce7; }
+    .status-falha { color: #b91c1c; background: #fee2e2; }
+    .status-outro { color: #374151; background: #e5e7eb; }
+    .acao { font-weight: 700; color: #0f172a; margin-bottom: 2px; }
+    .resumo, .rota { color: #64748b; font-size: 12px; line-height: 1.35; word-break: break-word; }
+    .paginacao { margin-top: 16px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .check-inline { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #475569; }
+    .check-inline input { width: auto; }
+    .filtros-ativos { margin: 0 0 12px; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 10px; background: #f8fafc; }
+    .filtros-ativos strong { display: block; margin-bottom: 6px; font-size: 11px; color: #334155; text-transform: uppercase; letter-spacing: .04em; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip { display: inline-block; padding: 4px 10px; border-radius: 999px; border: 1px solid #bfdbfe; background: #eff6ff; color: #1e3a8a; font-size: 12px; font-weight: 600; }
+  </style>
+</head>
+<body>
+{{ ui.app_header('Auditoria, Segurança & Conformidade LGPD', back_url=url_for('painel'), back_label='← Painel de Gestão') }}
+{{ ui.flash_messages() }}
+
+<div class="container">
+  <div class="top">
+    <div>
+      <h1>Auditoria &amp; Logs de Segurança</h1>
+      <p class="subtitle">Trilha imutável de eventos com mascaramento automático de dados sensíveis (LGPD) e proteção contra brute force.</p>
+    </div>
+    <div class="top-actions">
+      <a class="btn btn-index" href="{{ url_for('painel') }}">Voltar ao Painel</a>
+      <a class="btn btn-primary" href="{{ url_for('auditoria.exportar_logs_csv', **filtros) }}">Exportar CSV</a>
+    </div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi"><span>IPs bloqueados agora</span><strong>{{ total_ips_bloqueados }}</strong></div>
+    <div class="kpi"><span>Total no filtro</span><strong>{{ total }}</strong></div>
+    <div class="kpi"><span>Sucessos</span><strong>{{ total_sucesso }}</strong></div>
+    <div class="kpi"><span>Falhas</span><strong>{{ total_falha }}</strong></div>
+    <div class="kpi"><span>Alertas</span><strong>{{ total_alerta }}</strong></div>
+  </div>
+
+  {% if ips_bloqueados_ativos %}
+      <div class="helper">
+          IPs bloqueados ativos:
+          {% for ip in ips_bloqueados_ativos %}
+          <a class="acao-link acao-editar" href="{{ url_for('auditoria.logs_auditoria', q=filtros.q, usuario=filtros.usuario, acao=filtros.acao, status=filtros.status, data_inicio=filtros.data_inicio, data_fim=filtros.data_fim, somente_bloqueados='1', ip_bloqueado=ip, per_page=per_page) }}">{{ ip }}</a>
+          {% endfor %}
+      </div>
+  {% endif %}
+
+  <form method="get" action="{{ url_for('auditoria.logs_auditoria') }}" class="filtros">
+    <input type="text" name="q" placeholder="Busca Geral" value="{{ filtros.q }}">
+    <input type="text" name="usuario" placeholder="Usuário" value="{{ filtros.usuario }}">
+
+    <select name="acao">
+      <option value="">Todas as ações</option>
+      {% for acao in acoes_disponiveis %}
+        <option value="{{ acao }}" {% if filtros.acao == acao %}selected{% endif %}>{{ formatar_acao(acao) }}</option>
+      {% endfor %}
+    </select>
+
+    <select name="tipo_evento">
+      <option value="">Todos os tipos</option>
+      <option value="alerta" {% if filtros.tipo_evento == 'alerta' %}selected{% endif %}>Alerta</option>
+      <option value="falha" {% if filtros.tipo_evento == 'falha' %}selected{% endif %}>Falha</option>
+      <option value="operacao" {% if filtros.tipo_evento == 'operacao' %}selected{% endif %}>Operação</option>
+    </select>
+
+    <label class="check-inline">
+      <input type="checkbox" name="somente_bloqueados" value="1" {% if filtros.somente_bloqueados %}checked{% endif %}>
+      Somente IPs bloqueados agora
+    </label>
+
+    <select name="ip_bloqueado">
+      <option value="">IP Bloqueado (todos)</option>
+      {% for ip in ips_bloqueados_ativos %}
+      <option value="{{ ip }}" {% if filtros.ip_bloqueado == ip %}selected{% endif %}>{{ ip }}</option>
+      {% endfor %}
+    </select>
+
+    <select name="status">
+      <option value="">Todos os status</option>
+      <option value="sucesso" {% if filtros.status == 'sucesso' %}selected{% endif %}>Sucesso</option>
+      <option value="falha" {% if filtros.status == 'falha' %}selected{% endif %}>Falha</option>
+    </select>
+
+    <input type="date" name="data_inicio" value="{{ filtros.data_inicio }}">
+    <input type="date" name="data_fim" value="{{ filtros.data_fim }}">
+
+    <select name="per_page">
+      <option value="25" {% if per_page == 25 %}selected{% endif %}>25 por página</option>
+      <option value="50" {% if per_page == 50 %}selected{% endif %}>50 por página</option>
+      <option value="100" {% if per_page == 100 %}selected{% endif %}>100 por página</option>
+      <option value="200" {% if per_page == 200 %}selected{% endif %}>200 por página</option>
+    </select>
+
+    <div class="filtro-actions">
+      <button type="submit" class="btn btn-primary">Aplicar filtros</button>
+      <a class="btn btn-navy" href="{{ url_for('auditoria.logs_auditoria') }}">Limpar</a>
+    </div>
+  </form>
+
+  {% if filtros_ativos %}
+  <div class="filtros-ativos">
+      <strong>Filtros Ativos</strong>
+      <div class="chips">
+          {% for item in filtros_ativos %}
+          <span class="chip">{{ item }}</span>
+          {% endfor %}
+      </div>
+  </div>
+  {% endif %}
+
+  <div class="helper">Legenda: alerta = evento crítico, falha = tentativa sem sucesso, operação = ação normal da plataforma.</div>
+
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Data/Hora</th>
+          <th>Tipo</th>
+          <th>Usuário</th>
+          <th>O que aconteceu</th>
+          <th>Status</th>
+          <th>Origem</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        {% set evento = tipo_evento(log) %}
+        <tr>
+          <td>{{ log.id }}</td>
+          <td>{{ formatar_datahora_local(log.criado_em) }}</td>
+          <td>
+            {% if evento == 'alerta' %}
+              <span class="badge-alerta">Alerta</span>
+            {% elif evento == 'falha' %}
+              <span class="badge-falha">Falha</span>
+            {% else %}
+              <span class="badge-operacao">Operação</span>
+            {% endif %}
+          </td>
+          <td>{{ log.usuario_login or '-' }}</td>
+          <td>
+            <div class="acao" title="{{ log.acao or '' }}">{{ formatar_acao(log.acao) }}</div>
+            <div class="resumo">{{ resumo_curto_detalhes(log.detalhes) }}</div>
+          </td>
+          <td>
+            <span class="status-pill {{ 'status-sucesso' if log.status == 'sucesso' else ('status-falha' if log.status == 'falha' else 'status-outro') }}">
+              {{ log.status or '-' }}
+            </span>
+          </td>
+          <td>
+            <div>{{ (log.recurso or '-') }}{% if log.recurso_id %} #{{ log.recurso_id }}{% endif %}</div>
+            <div>{{ log.ip_origem or '-' }}</div>
+            <div class="rota" title="{{ log.rota or '' }}">{{ log.rota or '-' }}</div>
+          </td>
+          <td><a class="acao-link acao-editar" href="{{ url_for('auditoria.detalhe_log_auditoria', log_id=log.id, retorno=retorno) }}">Ver detalhes</a></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" style="text-align:center; color:#64748b;">Nenhum log encontrado para os filtros informados.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="paginacao">
+    {% if page > 1 %}<a class="btn btn-index" href="{{ url_for('auditoria.logs_auditoria', page=page-1, per_page=per_page, **filtros) }}">Anterior</a>{% endif %}
+    <span style="font-size:13px; color:#475569;">Página {{ page }} de {{ total_pages }} | {{ per_page }} por página</span>
+    {% if page < total_pages %}<a class="btn btn-index" href="{{ url_for('auditoria.logs_auditoria', page=page+1, per_page=per_page, **filtros) }}">Próxima</a>{% endif %}
+  </div>
+</div>
+
+{{ ui.app_footer() }}
+<script src="{{ url_for('static', filename='js/flash.js') }}"></script>
+</body>
+</html>

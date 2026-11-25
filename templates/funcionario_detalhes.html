@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+{% import 'macros.html' as ui with context %}
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ficha do Colaborador — Nexus People &amp; Ops</title>
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.svg') }}" type="image/svg+xml">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/flash.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/form-errors.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <style>
+        .header-ficha {
+            position: relative; min-height: 170px; margin-bottom: 24px;
+            border-bottom: 1px solid #e2e8f0; padding-bottom: 20px;
+        }
+        .nomefuncionario { text-align: center; font-size: 28px; font-weight: 800; color: #0f172a; padding-top: 28px; }
+        .fotofuncionario { position: absolute; top: 0; right: 0; }
+        .fotofuncionario img { width: 150px; height: 150px; object-fit: cover; border-radius: 14px; border: 2px solid #cbd5e1; background: #f1f5f9; }
+        .badge-topo { display: flex; justify-content: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+        .infofuncionarios { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 18px; }
+        .info-item { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; }
+        .info-label { display: block; font-size: 11px; font-weight: 700; color: #64748b; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .04em; }
+        .info-value { font-size: 14.5px; color: #0f172a; word-break: break-word; font-weight: 500; }
+        .acoes-ficha { margin-top: 28px; text-align: center; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+        @media (max-width: 900px) {
+            .infofuncionarios { grid-template-columns: 1fr; }
+            .header-ficha { padding-top: 170px; }
+            .fotofuncionario { left: 50%; transform: translateX(-50%); right: auto; }
+            .nomefuncionario { padding-top: 0; }
+        }
+    </style>
+</head>
+<body>
+{{ ui.app_header('Ficha Cadastral do Colaborador', back_url=url_for('painel'), back_label='← Painel de Gestão') }}
+{{ ui.flash_messages() }}
+
+<div class="container container-narrow">
+    {% set foto_funcionario = url_for('static', filename='fotos_funcionarios/' ~ (funcionario.id | string) ~ '.jpg') %}
+    {% set foto_padrao = url_for('static', filename='img/sem_foto.jpg') %}
+
+    <div class="header-ficha">
+        <div class="nomefuncionario">{{ funcionario.nome_completo }}</div>
+
+        <div class="badge-topo">
+            <span class="badge-vinculo {{ 'badge-efetivo' if funcionario.vinculo == 'EFETIVO' else 'badge-terceirizado' }}">
+                {{ funcionario.vinculo }}
+            </span>
+
+            <span class="badge-status {{ 'status-ativo' if funcionario.ativo else 'status-inativo' }}">
+                {{ funcionario.situacao if funcionario.situacao else ('Ativo' if funcionario.ativo else 'Inativo') }}
+            </span>
+        </div>
+
+        <div class="fotofuncionario">
+            <img src="{{ foto_funcionario }}"
+                 alt="Foto do Colaborador"
+                 onerror="this.onerror=null;this.src='{{ foto_padrao }}';">
+        </div>
+    </div>
+
+    <h2>Identificação</h2>
+    <div class="infofuncionarios">
+        <div class="info-item">
+            <span class="info-label">CPF</span>
+            <span class="info-value">{{ funcionario.cpf | formato_cpf }}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">RG</span>
+            <span class="info-value">{{ funcionario.rg | formato_rg if funcionario.rg else '-' }}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">CIN</span>
+            <span class="info-value">{{ funcionario.cin or '-' }}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Título de Eleitor</span>
+            <span class="info-value">{{ funcionario.titulo_eleitor or '-' }}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">PIS/PASEP</span>
+            <span class="info-value">{{ funcionario.pis_pasep or '-' }}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Data de Nascimento</span>
+            <span class="info-value">{{ funcionario.data_nasc.strftime('%d/%m/%Y') if funcionario.data_nasc else '-' }}</span>
+        </div>
+    </div>
+
+    <h2>Contato</h2>
+    <div class="infofuncionarios">
+        <div class="info-item">
+            <span class="info-label">Endereço Residencial</span>
+            <span class="info-value">{{ funcionario.endereco_residencial or '-' }}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Telefone Pessoal</span>
+            <span class="info-value">{{ funcionario.telefone_pessoal or '-' }}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">E-mail Pessoal</span>
+            <span class="info-value">{{ funcionario.email_pessoal or '-' }}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">E-mail Corporativo</span>
+            <span class="info-value">{{ funcionario.email_corporativo or '-' }}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Ramal</span>
+            <span class="info-value">{{ funcionario.ramal or '-' }}</span>
+        </div>
+    </div>
+
+    <h2>Dados Corporativos</h2>
+    <div class="infofuncionarios">
+        <div class="info-item">
+            <span class="info-label">Tipo</span>
+            <span class="info-value">{{ funcionario.tipo or '-' }}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Subtipo de Vínculo</span>
+            <span class="info-value">{{ funcionario.subtipo_vinculo or '-' }}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Forma de Ingresso</span>
+            <span class="info-value">{{ funcionario.forma_ingresso or '-' }}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Registro Interno</span>
+            <span class="info-value">{{ funcionario.registro_interno or '-' }}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Matrícula</span>
+            <span class="info-value">{{ funcionario.matricula or '-' }}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Cargo Atual</span>
+            <span class="info-value">{{ funcionario.cargo_atual or '-' }}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Cargo Anterior</span>
+            <span class="info-value">{{ funcionario.cargo_anterior or '-' }}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Unidade</span>
+            <span class="info-value">{{ funcionario.unidade or '-' }}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Departamento</span>
+            <span class="info-value">{{ funcionario.departamento or '-' }}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Diretoria</span>
+            <span class="info-value">{{ funcionario.diretoria or '-' }}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Documento de Vínculo</span>
+            <span class="info-value">{{ funcionario.documento_vinculo or '-' }}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Situação</span>
+            <span class="info-value">{{ funcionario.situacao or '-' }}</span>
+        </div>
+    </div>
+
+    <h2>Datas</h2>
+    <div class="infofuncionarios">
+        <div class="info-item">
+            <span class="info-label">Data de Integração</span>
+            <span class="info-value">{{ funcionario.data_integracao.strftime('%d/%m/%Y') if funcionario.data_integracao else '-' }}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Data de Início</span>
+            <span class="info-value">{{ funcionario.data_inicio.strftime('%d/%m/%Y') if funcionario.data_inicio else '-' }}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Data de Admissão</span>
+            <span class="info-value">{{ funcionario.data_admissao.strftime('%d/%m/%Y') if funcionario.data_admissao else '-' }}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Data de Desligamento</span>
+            <span class="info-value">{{ funcionario.data_desligamento.strftime('%d/%m/%Y') if funcionario.data_desligamento else '-' }}</span>
+        </div>
+    </div>
+
+    {% if funcionario.vinculo == 'TERCEIRIZADO' %}
+        <h2>Dados Contratuais &amp; Fornecedor</h2>
+        <div class="infofuncionarios">
+            <div class="info-item">
+                <span class="info-label">Empresa Contratada</span>
+                <span class="info-value">{{ funcionario.empresa_contratada or '-' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Número do Contrato</span>
+                <span class="info-value">{{ funcionario.numero_contrato or '-' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Gestor do Contrato</span>
+                <span class="info-value">{{ funcionario.gestor_contrato or '-' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Líder Técnico</span>
+                <span class="info-value">{{ funcionario.lider_tecnico or '-' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Analista de Contratos</span>
+                <span class="info-value">{{ funcionario.analista_contratos or '-' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Representante do Fornecedor</span>
+                <span class="info-value">{{ funcionario.representante_fornecedor or '-' }}</span>
+            </div>
+        </div>
+    {% endif %}
+
+    <div class="acoes-ficha">
+        <a class="btn btn-index" href="{{ url_for('busca.index') }}">Voltar à Busca</a>
+        <a class="btn btn-navy" href="{{ url_for('painel') }}">Painel de Gestão</a>
+        {% if current_user.is_authenticated and current_user.is_admin %}
+            <a class="btn btn-primary" href="{{ url_for('editfunc.editar_funcionario', id=funcionario.id) }}">Editar Colaborador</a>
+        {% endif %}
+    </div>
+</div>
+
+{{ ui.app_footer() }}
+<script src="{{ url_for('static', filename='js/flash.js') }}"></script>
+</body>
+</html>

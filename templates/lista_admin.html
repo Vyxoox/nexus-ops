@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+{% import 'macros.html' as ui with context %}
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administradores — Nexus People &amp; Ops</title>
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.svg') }}" type="image/svg+xml">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/flash.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/form-errors.css') }}">
+    <style>
+        .top-section { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; flex-wrap: wrap; gap: 14px; }
+        .badge-super { background: #fef3c7; color: #b45309; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+        .badge-admin { background: #dbeafe; color: #1e40af; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+        .action-cell { display: flex; gap: 8px; flex-wrap: wrap; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+    </style>
+</head>
+<body>
+{{ ui.app_header('Gestão de Administradores e RBAC', back_url=url_for('painel'), back_label='← Painel de Gestão') }}
+{{ ui.flash_messages() }}
+
+<div class="container">
+    <div class="top-section">
+        <h1>Gerenciamento de Administradores</h1>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <a class="btn btn-primary" href="{{ url_for('usuarios.criar_admin') }}">➕ Novo Administrador</a>
+            <a class="btn btn-accent" href="{{ url_for('usuarios.teste_email') }}">✉️ Teste SMTP</a>
+            <a class="btn btn-index" href="{{ url_for('painel') }}">Voltar ao Painel</a>
+        </div>
+    </div>
+
+    {% if usuarios %}
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Login</th>
+                        <th>Perfil de Acesso</th>
+                        <th>Nível</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in usuarios %}
+                        <tr>
+                            <td style="font-weight: 700;">{{ u.login }}</td>
+                            <td><code>{{ u.perfil }}</code></td>
+                            <td>
+                                {% if u.is_superadmin %}
+                                    <span class="badge-super">Superadmin</span>
+                                {% else %}
+                                    <span class="badge-admin">Admin Escopado</span>
+                                {% endif %}
+                            </td>
+                            <td class="action-cell">
+                                <a class="btn btn-primary btn-sm" href="{{ url_for('usuarios.editar_acesso_admin', usuario_id=u.id) }}">Editar acesso</a>
+                                <a class="btn btn-index btn-sm" href="{{ url_for('usuarios.resetar_senha_admin', usuario_id=u.id) }}">Resetar senha</a>
+                                <form action="{{ url_for('usuarios.excluir_admin', usuario_id=u.id) }}" method="POST"
+                                      style="display: inline;" onsubmit="return confirm('Tem certeza que deseja excluir este administrador? Esta ação não pode ser desfeita.');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-logout btn-sm">Excluir</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div style="text-align:center; padding:42px; color:#64748b;">
+            <p>Nenhum administrador cadastrado no sistema.</p>
+        </div>
+    {% endif %}
+</div>
+
+{{ ui.app_footer() }}
+<script src="{{ url_for('static', filename='js/flash.js') }}"></script>
+</body>
+</html>
