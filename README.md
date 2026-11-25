@@ -1,4 +1,4 @@
-# Nexus People & Ops — Plataforma Corporativa de Gestão de Pessoas, Contratos & Conformidade
+# Nexus Ops — Plataforma Corporativa de Gestão de Pessoas, Contratos & Conformidade
 
 [![Python](https://img.shields.io/badge/Python-3.12+-1e40af?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Flask-3.1-0f172a?style=flat-square&logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
