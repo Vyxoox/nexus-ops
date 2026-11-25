@@ -50,4 +50,9 @@ def enviar_email(destinatario, assunto, corpo):
 
     finally:
         if cliente_smtp:
-            cliente_smtp.quit()
+            try:
+                cliente_smtp.quit()
+            except Exception:
+                pass
+            finally:
+                cliente_smtp.close()
